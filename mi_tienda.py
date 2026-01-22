@@ -1,30 +1,50 @@
 import streamlit as st
+import pandas as pd
 import os
 
-# Configuración del Logo (ajustado al nombre en tu carpeta)
-# Si cambias el nombre a logo.jpg en GitHub, quita el ".ico" de aquí abajo
-st.image("logotipo.ico.jpg", width=150)
+# Configuración de la página
+st.set_page_config(page_title="Comercial San José", layout="wide")
 
-st.title("Comercial San José - Sistema de Inventario")
+st.title("🛒 Comercial San José - Gestión de Inventario")
 
-# Función para mostrar las imágenes desde tu nueva carpeta
-def mostrar_producto(nombre_archivo, descripcion):
-    # La ruta incluye el nombre exacto de la carpeta que creaste
+# Función para cargar imágenes desde tu carpeta específica
+def mostrar_foto(nombre_archivo, descripcion):
     ruta_carpeta = "fotostu_imagen.jpg"
     ruta_completa = os.path.join(ruta_carpeta, nombre_archivo)
-    
     if os.path.exists(ruta_completa):
         st.image(ruta_completa, caption=descripcion, width=200)
     else:
-        st.warning(f"No se encontró la imagen: {nombre_archivo}")
+        st.write(f"⚠️ Imagen no encontrada: {nombre_archivo}")
 
-# Ejemplos con los nombres exactos que vi en tu captura de pantalla
-col1, col2 = st.columns(2)
+# Sección de Inventario y Stock
+st.header("📦 Control de Productos")
+
+try:
+    df = pd.read_csv("inventario_mercado.csv")
+    st.dataframe(df)
+    
+    # Buscador de productos
+    busqueda = st.text_input("Buscar producto por nombre:")
+    if busqueda:
+        resultado = df[df['producto'].str.contains(busqueda, case=False)]
+        st.write(resultado)
+except Exception as e:
+    st.error("No se pudo cargar el archivo inventario_mercado.csv. Verifica que esté en GitHub.")
+
+# Galería de fotos con los nombres exactos de tu carpeta
+st.header("📸 Galería de Productos")
+col1, col2, col3 = st.columns(3)
 
 with col1:
-    mostrar_producto("OLLA.jfif", "Ollas de aluminio")
-    mostrar_producto("PLATOS.jfif", "Platos diversos")
+    mostrar_foto("OLLA.jfif", "Olla de aluminio")
+    mostrar_foto("PLATOS.jfif", "Platos diversos")
 
 with col2:
-    mostrar_producto("CASEROLA-ALTA-ALUMINIO.jpg", "Cacerola alta")
-    mostrar_producto("0_0550265095_0.webp", "Producto especial")
+    mostrar_foto("CASEROLA-ALTA-ALUMINIO.jpg", "Cacerola Alta")
+    mostrar_foto("TERMO.jfif", "Termos")
+
+with col3:
+    mostrar_foto("0_0550265095_0.webp", "Producto Nuevo")
+    mostrar_foto("CUBIERTOS.jfif", "Sets de cubiertos")
+
+st.info("Para actualizar el stock o precios por x.mayor, modifica el archivo Excel y súbelo a GitHub.")
