@@ -1,143 +1,30 @@
 import streamlit as st
-import pandas as pd
 import os
-import io
-from datetime import datetime
-import streamlit.components.v1 as components
 
-# --- CONFIGURACIÓN BASE ---
-ARCHIVO_DATOS = "inventario_mercado.csv"
-ARCHIVO_VENTAS = "ventas_dia.csv"
-CARPETA_FOTOS = "fotos_productos"
+# Configuración del Logo (ajustado al nombre en tu carpeta)
+# Si cambias el nombre a logo.jpg en GitHub, quita el ".ico" de aquí abajo
+st.image("logotipo.ico.jpg", width=150)
 
-if not os.path.exists(CARPETA_FOTOS): os.makedirs(CARPETA_FOTOS)
-if 'carrito' not in st.session_state: st.session_state.carrito = []
+st.title("Comercial San José - Sistema de Inventario")
 
-def cargar_datos():
-    cols = ["Producto", "Marca", "Cantidad", "Precio", "Precio Mayoreo", "Categoria", "Imagen"]
-    if os.path.exists(ARCHIVO_DATOS):
-        try:
-            df = pd.read_csv(ARCHIVO_DATOS)
-            if len(df.columns) == 7: return df
-        except: pass
-    return pd.DataFrame(columns=cols)
+# Función para mostrar las imágenes desde tu nueva carpeta
+def mostrar_producto(nombre_archivo, descripcion):
+    # La ruta incluye el nombre exacto de la carpeta que creaste
+    ruta_carpeta = "fotostu_imagen.jpg"
+    ruta_completa = os.path.join(ruta_carpeta, nombre_archivo)
+    
+    if os.path.exists(ruta_completa):
+        st.image(ruta_completa, caption=descripcion, width=200)
+    else:
+        st.warning(f"No se encontró la imagen: {nombre_archivo}")
 
-def agregar_al_carrito(p, m, monto, tipo):
-    st.session_state.carrito.append({
-        'id': datetime.now().timestamp(),
-        'p': p, 'm': m, 'pr': float(monto), 't': tipo, 'desc': 0.0
-    })
+# Ejemplos con los nombres exactos que vi en tu captura de pantalla
+col1, col2 = st.columns(2)
 
-st.set_page_config(page_title="Comercial San José - Pro", layout="wide")
+with col1:
+    mostrar_producto("OLLA.jfif", "Ollas de aluminio")
+    mostrar_producto("PLATOS.jfif", "Platos diversos")
 
-# --- BARRA LATERAL ---
-with st.sidebar:
-    st.header("➕ Registro de Productos")
-    with st.form("reg_form", clear_on_submit=True):
-        n = st.text_input("Nombre")
-        mar = st.text_input("Marca")
-        stk = st.number_input("Stock Inicial", min_value=0)
-        p1 = st.number_input("Precio Unidad")
-        p2 = st.number_input("Precio x.mayor")
-        f = st.file_uploader("Foto", type=["jpg", "png", "jpeg"])
-        if st.form_submit_button("Guardar Producto"):
-            if n:
-                df = cargar_datos()
-                ruta = os.path.join(CARPETA_FOTOS, f.name) if f else "No disponible"
-                if f:
-                    with open(ruta, "wb") as file: file.write(f.getbuffer())
-                nuevo = pd.DataFrame([[n, mar if mar else "Genérico", int(stk), float(p1), float(p2), "Otros", ruta]], columns=df.columns)
-                pd.concat([df, nuevo], ignore_index=True).to_csv(ARCHIVO_DATOS, index=False)
-                st.rerun()
-
-# --- CUERPO PRINCIPAL ---
-t1, t2, t3 = st.tabs(["🛒 VENTA RÁPIDA", "📄 PROFORMA", "📊 CAJA"])
-
-with t1:
-    df = cargar_datos()
-    if not df.empty:
-        bus = st.text_input("🔍 Buscar...").lower()
-        df_f = df[df['Producto'].str.lower().str.contains(bus) | df['Marca'].str.lower().str.contains(bus)] if bus else df
-        cols = st.columns(4)
-        for i, (idx, row) in enumerate(df_f.iterrows()):
-            with cols[i % 4]:
-                if os.path.exists(str(row['Imagen'])): st.image(row['Imagen'], use_container_width=True)
-                st.markdown(f"### {row['Producto']}")
-                st.write(f"Marca: {row['Marca']}")
-                stk_v = int(row['Cantidad'])
-                color = "red" if stk_v <= 3 else "green"
-                st.markdown(f"Stock: **:{color}[{stk_v} unid]**")
-                
-                c_v1, c_v2 = st.columns(2)
-                if c_v1.button(f"S/.{row['Precio']} 💰 x.Unid", key=f"u_{idx}", use_container_width=True):
-                    if row['Cantidad'] > 0:
-                        agregar_al_carrito(row['Producto'], row['Marca'], row['Precio'], "UNID")
-                        df.at[idx, 'Cantidad'] -= 1
-                        df.to_csv(ARCHIVO_DATOS, index=False); st.rerun()
-                if c_v2.button(f"S/.{row['Precio Mayoreo']} 📦 x.mayor", key=f"m_{idx}", use_container_width=True):
-                    if row['Cantidad'] > 0:
-                        agregar_al_carrito(row['Producto'], row['Marca'], row['Precio Mayoreo'], "x.mayor")
-                        df.at[idx, 'Cantidad'] -= 1
-                        df.to_csv(ARCHIVO_DATOS, index=False); st.rerun()
-
-                ca, cb = st.columns([1, 1])
-                with ca.popover("➕ Añadir"):
-                    n_s = st.number_input("Sumar", min_value=1, key=f"sum_{idx}")
-                    if st.button("OK", key=f"ok_{idx}"):
-                        df.at[idx, 'Cantidad'] += n_s
-                        df.to_csv(ARCHIVO_DATOS, index=False); st.rerun()
-                if cb.button("🗑️ Eliminar", key=f"del_{idx}", use_container_width=True):
-                    df.drop(idx).to_csv(ARCHIVO_DATOS, index=False); st.rerun()
-                st.write("---")
-
-with t2:
-    st.header("📄 Detalle de Proforma")
-    if st.session_state.carrito:
-        for i, item in enumerate(st.session_state.carrito):
-            c_a, c_b, c_c = st.columns([3, 1, 1])
-            c_a.write(f"**{item['p']}** ({item['t']})")
-            c_b.write(f"S/. {item['pr'] - item['desc']:.2f}")
-            with c_c.popover("💸 Rebajar"):
-                r = st.number_input("Monto", min_value=0.0, step=0.1, key=f"reb_{i}")
-                if st.button("Aplicar", key=f"btn_reb_{i}"):
-                    st.session_state.carrito[i]['desc'] = r
-                    st.rerun()
-
-        total_f = sum(it['pr'] - it['desc'] for it in st.session_state.carrito)
-        f_h = datetime.now().strftime('%d/%m/%Y %H:%M')
-        
-        filas = ""
-        for it in st.session_state.carrito:
-            filas += f"<tr><td>{it['p']}</td><td align='right'>S/.{it['pr'] - it['desc']:.2f}</td></tr>"
-            if it['desc'] > 0:
-                filas += f"<tr style='font-size:10px; color:gray;'><td>(Rebaja de S/.{it['desc']:.2f} aplicada)</td><td></td></tr>"
-
-        ticket = f"""
-        <div style="border:2px solid #2e7d32; padding:15px; font-family:Arial; width:260px; background:white; color:black; border-radius:10px;">
-            <center><h3 style="margin:0; color:#1b5e20;">PROFORMA</h3><b>COMERCIAL SAN JOSÉ</b><br><small>{f_h}</small><hr></center>
-            <table style="width:100%; font-size:12px;">{filas}</table>
-            <hr><h3 align="right" style="color:#1b5e20;">TOTAL: S/. {total_f:.2f}</h3>
-            <center><p style="font-size:12px; margin-top:10px;">¡Gracias por su visita!</p></center>
-            <button onclick="window.print()" style="width:100%; background:#2e7d32; color:white; border:none; padding:10px; cursor:pointer; font-weight:bold; border-radius:5px;">🖨️ IMPRIMIR</button>
-        </div>"""
-        components.html(ticket, height=500)
-        
-        if st.button("✅ GUARDAR VENTA", type="primary", use_container_width=True):
-            v_data = pd.DataFrame([[datetime.now().strftime("%Y-%m-%d %H:%M"), "Venta Detallada", total_f]], columns=["Fecha", "Producto", "Monto"])
-            if os.path.exists(ARCHIVO_VENTAS):
-                pd.concat([pd.read_csv(ARCHIVO_VENTAS), v_data], ignore_index=True).to_csv(ARCHIVO_VENTAS, index=False)
-            else: v_data.to_csv(ARCHIVO_VENTAS, index=False)
-            st.session_state.carrito = []; st.success("Venta guardada"); st.rerun()
-        if st.button("❌ VACIAR"): st.session_state.carrito = []; st.rerun()
-    else: st.info("Carrito vacío.")
-
-with t3:
-    st.header("📊 Resumen de Caja")
-    if os.path.exists(ARCHIVO_VENTAS):
-        df_v = pd.read_csv(ARCHIVO_VENTAS)
-        st.metric("Total Hoy", f"S/. {df_v['Monto'].sum():.2f}")
-        towrite = io.BytesIO()
-        df_v.to_excel(towrite, index=False, engine='xlsxwriter')
-        st.download_button("📥 Excel", data=towrite.getvalue(), file_name="caja.xlsx", mime="application/vnd.ms-excel", use_container_width=True)
-        st.dataframe(df_v, use_container_width=True)
-        if st.button("🗑️ REINICIAR DÍA"): os.remove(ARCHIVO_VENTAS); st.rerun()
+with col2:
+    mostrar_producto("CASEROLA-ALTA-ALUMINIO.jpg", "Cacerola alta")
+    mostrar_producto("0_0550265095_0.webp", "Producto especial")
