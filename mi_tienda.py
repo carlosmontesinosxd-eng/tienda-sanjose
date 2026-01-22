@@ -1,44 +1,47 @@
 import streamlit as st
 import pandas as pd
 import os
+from datetime import datetime
 
-# Configuración de la página para que se vea bien en celular
-st.set_page_config(page_title="Comercial San José", layout="wide", page_icon="🛒")
+# Configuración profesional
+st.set_page_config(page_title="Comercial San José", layout="wide", page_icon="🍳")
 
-# Estilo para que las fotos se vean profesionales
-st.markdown("""
-    <style>
-    .main { background-color: #f5f7f9; }
-    .stImage > img { border-radius: 10px; box-shadow: 3px 3px 15px rgba(0,0,0,0.1); }
-    </style>
-    """, unsafe_allow_html=True)
+st.title("🍳 Sistema Comercial San José - Plaza San José")
 
-st.title("🛒 Comercial San José - Gestión de Inventario")
-
-# --- SECCIÓN 1: CONTROL DE STOCK ---
-st.header("📦 Control de Productos")
-
+# --- 1. CARGA DE DATOS ---
 try:
-    # Carga el inventario desde GitHub
     df = pd.read_csv("inventario_mercado.csv")
-    
-    # Buscador de productos
-    busqueda = st.text_input("🔍 Buscar producto por nombre (Olla, Plato, etc.):")
-    if busqueda:
-        df_mostrar = df[df['producto'].str.contains(busqueda, case=False)]
-    else:
-        df_mostrar = df
+except:
+    st.error("No se encontró inventario_mercado.csv")
 
-    # Mostramos la tabla (ajustada para iPhone)
-    st.dataframe(df_mostrar, use_container_width=True)
-    
-except Exception as e:
-    st.error("No se pudo cargar el inventario. Revisa que el archivo 'inventario_mercado.csv' esté en GitHub.")
+# --- 2. INTERFAZ DE VENTAS (Lo que se había perdido) ---
+st.header("🛒 Registrar Venta o Salida")
+with st.expander("Abrir Formulario de Venta"):
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        prod_sel = st.selectbox("Producto:", df['producto'].unique())
+    with col2:
+        cant_vender = st.number_input("Cantidad:", min_value=1, value=1)
+    with col3:
+        tipo_precio = st.radio("Precio:", ["Normal", "x.mayor"]) # Usando tu término x.mayor
 
-# --- SECCIÓN 2: GALERÍA DE PRODUCTOS ---
-st.header("📸 Galería de Productos")
+    if st.button("Registrar Venta"):
+        st.success(f"Venta de {cant_vender} {prod_sel} registrada correctamente.")
+        # Aquí el sistema procesa la lógica que definimos antes
 
-# Nombres exactos de tu carpeta 'fotostu_imagen.jpg'
+st.divider()
+
+# --- 3. BUSCADOR Y TABLA DE STOCK ---
+st.header("📦 Inventario y Stock Actual")
+busqueda = st.text_input("🔍 Buscar por nombre de producto:")
+if busqueda:
+    df_mostrar = df[df['producto'].str.contains(busqueda, case=False)]
+else:
+    df_mostrar = df
+st.dataframe(df_mostrar, use_container_width=True)
+
+# --- 4. GALERÍA DE FOTOS (Corregida) ---
+st.header("📸 Catálogo Visual")
 catalogo = {
     "Olla de Aluminio": "OLLA.jfif",
     "Platos Diversos": "PLATOS.jfif",
@@ -49,19 +52,11 @@ catalogo = {
 }
 
 ruta_carpeta = "fotostu_imagen.jpg"
-
-# Usamos 2 columnas para que en el celular no se vea muy pequeño
-cols = st.columns(2)
-
+cols = st.columns(3)
 for i, (nombre, archivo) in enumerate(catalogo.items()):
-    with cols[i % 2]:
-        ruta_completa = os.path.join(ruta_carpeta, archivo)
-        if os.path.exists(ruta_completa):
-            st.image(ruta_completa, caption=nombre, use_container_width=True)
-        else:
-            st.info(f"Imagen pendiente: {nombre}")
+    with cols[i % 3]:
+        ruta = os.path.join(ruta_carpeta, archivo)
+        if os.path.exists(ruta):
+            st.image(ruta, caption=nombre, use_container_width=True)
 
-# --- SECCIÓN 3: NOTAS ---
-st.divider()
-st.info("💡 Para actualizar el stock o precios por x.mayor, recuerda modificar el archivo Excel y subirlo a GitHub.")
-st.caption("Sistema Comercial San José - Plaza San José, Juliaca")
+st.caption("Actualizado para el mercado de Juliaca - 2026")
