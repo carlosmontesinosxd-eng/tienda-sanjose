@@ -8,19 +8,20 @@ import streamlit.components.v1 as components
 # --- CONFIGURACIÓN BASE ---
 ARCHIVO_DATOS = "inventario_mercado.csv"
 ARCHIVO_VENTAS = "ventas_dia.csv"
-CARPETA_FOTOS = "fotos_productos"
+# CORRECCIÓN: Usamos tu carpeta real de GitHub
+CARPETA_FOTOS = "fotostu_imagen.jpg" 
 
-if not os.path.exists(CARPETA_FOTOS): os.makedirs(CARPETA_FOTOS)
 if 'carrito' not in st.session_state: st.session_state.carrito = []
 
 def cargar_datos():
-    cols = ["Producto", "Marca", "Cantidad", "Precio", "Precio Mayoreo", "Categoria", "Imagen"]
     if os.path.exists(ARCHIVO_DATOS):
         try:
             df = pd.read_csv(ARCHIVO_DATOS)
-            if len(df.columns) == 7: return df
+            # Limpiamos nombres de columnas por si acaso
+            df.columns = [c.strip() for c in df.columns]
+            return df
         except: pass
-    return pd.DataFrame(columns=cols)
+    return pd.DataFrame(columns=["Producto", "Marca", "Cantidad", "Precio", "Precio Mayoreo", "Categoria", "Imagen"])
 
 def agregar_al_carrito(p, m, monto, tipo):
     st.session_state.carrito.append({
@@ -39,7 +40,7 @@ with st.sidebar:
         stk = st.number_input("Stock Inicial", min_value=0)
         p1 = st.number_input("Precio Unidad")
         p2 = st.number_input("Precio x.mayor")
-        f = st.file_uploader("Foto", type=["jpg", "png", "jpeg"])
+        f = st.file_uploader("Foto", type=["jpg", "png", "jpeg", "jfif", "webp"])
         if st.form_submit_button("Guardar Producto"):
             if n:
                 df = cargar_datos()
@@ -58,10 +59,19 @@ with t1:
     if not df.empty:
         bus = st.text_input("🔍 Buscar...").lower()
         df_f = df[df['Producto'].str.lower().str.contains(bus) | df['Marca'].str.lower().str.contains(bus)] if bus else df
+        
         cols = st.columns(4)
         for i, (idx, row) in enumerate(df_f.iterrows()):
             with cols[i % 4]:
-                if os.path.exists(str(row['Imagen'])): st.image(row['Imagen'], use_container_width=True)
+                # --- LÓGICA DE IMAGEN MEJORADA ---
+                nombre_foto = str(row['Imagen']).split('\\')[-1].split('/')[-1]
+                ruta_posible = os.path.join(CARPETA_FOTOS, nombre_foto)
+                
+                if os.path.exists(ruta_posible):
+                    st.image(ruta_posible, use_container_width=True)
+                else:
+                    st.caption("🖼️ Sin foto")
+                
                 st.markdown(f"### {row['Producto']}")
                 st.write(f"Marca: {row['Marca']}")
                 stk_v = int(row['Cantidad'])
@@ -69,24 +79,24 @@ with t1:
                 st.markdown(f"Stock: **:{color}[{stk_v} unid]**")
                 
                 c_v1, c_v2 = st.columns(2)
-                if c_v1.button(f"S/.{row['Precio']} 💰 x.Unid", key=f"u_{idx}", use_container_width=True):
+                if c_v1.button(f"S/.{row['Precio']} Unidad", key=f"u_{idx}", use_container_width=True):
                     if row['Cantidad'] > 0:
                         agregar_al_carrito(row['Producto'], row['Marca'], row['Precio'], "UNID")
                         df.at[idx, 'Cantidad'] -= 1
                         df.to_csv(ARCHIVO_DATOS, index=False); st.rerun()
-                if c_v2.button(f"S/.{row['Precio Mayoreo']} 📦 x.mayor", key=f"m_{idx}", use_container_width=True):
+                if c_v2.button(f"S/.{row['Precio Mayoreo']} x.mayor", key=f"m_{idx}", use_container_width=True):
                     if row['Cantidad'] > 0:
                         agregar_al_carrito(row['Producto'], row['Marca'], row['Precio Mayoreo'], "x.mayor")
                         df.at[idx, 'Cantidad'] -= 1
                         df.to_csv(ARCHIVO_DATOS, index=False); st.rerun()
 
                 ca, cb = st.columns([1, 1])
-                with ca.popover("➕ Añadir"):
+                with ca.popover("➕ Sumar"):
                     n_s = st.number_input("Sumar", min_value=1, key=f"sum_{idx}")
                     if st.button("OK", key=f"ok_{idx}"):
                         df.at[idx, 'Cantidad'] += n_s
                         df.to_csv(ARCHIVO_DATOS, index=False); st.rerun()
-                if cb.button("🗑️ Eliminar", key=f"del_{idx}", use_container_width=True):
+                if cb.button("🗑️ Borrar", key=f"del_{idx}", use_container_width=True):
                     df.drop(idx).to_csv(ARCHIVO_DATOS, index=False); st.rerun()
                 st.write("---")
 
@@ -109,18 +119,15 @@ with t2:
         filas = ""
         for it in st.session_state.carrito:
             filas += f"<tr><td>{it['p']}</td><td align='right'>S/.{it['pr'] - it['desc']:.2f}</td></tr>"
-            if it['desc'] > 0:
-                filas += f"<tr style='font-size:10px; color:gray;'><td>(Rebaja de S/.{it['desc']:.2f} aplicada)</td><td></td></tr>"
 
         ticket = f"""
         <div style="border:2px solid #2e7d32; padding:15px; font-family:Arial; width:260px; background:white; color:black; border-radius:10px;">
             <center><h3 style="margin:0; color:#1b5e20;">PROFORMA</h3><b>COMERCIAL SAN JOSÉ</b><br><small>{f_h}</small><hr></center>
             <table style="width:100%; font-size:12px;">{filas}</table>
             <hr><h3 align="right" style="color:#1b5e20;">TOTAL: S/. {total_f:.2f}</h3>
-            <center><p style="font-size:12px; margin-top:10px;">¡Gracias por su visita!</p></center>
             <button onclick="window.print()" style="width:100%; background:#2e7d32; color:white; border:none; padding:10px; cursor:pointer; font-weight:bold; border-radius:5px;">🖨️ IMPRIMIR</button>
         </div>"""
-        components.html(ticket, height=500)
+        components.html(ticket, height=400)
         
         if st.button("✅ GUARDAR VENTA", type="primary", use_container_width=True):
             v_data = pd.DataFrame([[datetime.now().strftime("%Y-%m-%d %H:%M"), "Venta Detallada", total_f]], columns=["Fecha", "Producto", "Monto"])
@@ -138,6 +145,6 @@ with t3:
         st.metric("Total Hoy", f"S/. {df_v['Monto'].sum():.2f}")
         towrite = io.BytesIO()
         df_v.to_excel(towrite, index=False, engine='xlsxwriter')
-        st.download_button("📥 Excel", data=towrite.getvalue(), file_name="caja.xlsx", mime="application/vnd.ms-excel", use_container_width=True)
+        st.download_button("📥 Descargar Excel", data=towrite.getvalue(), file_name="caja.xlsx", mime="application/vnd.ms-excel", use_container_width=True)
         st.dataframe(df_v, use_container_width=True)
         if st.button("🗑️ REINICIAR DÍA"): os.remove(ARCHIVO_VENTAS); st.rerun()
