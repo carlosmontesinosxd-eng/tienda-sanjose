@@ -2,60 +2,66 @@ import streamlit as st
 import pandas as pd
 import os
 
-# Configuración visual para celular
-st.set_page_config(page_title="Comercial San José", layout="wide")
+# Configuración de la página para que se vea bien en celular
+st.set_page_config(page_title="Comercial San José", layout="wide", page_icon="🛒")
 
-# Estilo personalizado para las imágenes
+# Estilo para que las fotos se vean profesionales
 st.markdown("""
     <style>
-    .stImage > img {
-        border-radius: 15px;
-        box-shadow: 0px 4px 10px rgba(0,0,0,0.1);
-    }
+    .main { background-color: #f5f7f9; }
+    .stImage > img { border-radius: 10px; box-shadow: 3px 3px 15px rgba(0,0,0,0.1); }
     </style>
     """, unsafe_allow_html=True)
 
-st.title("🛒 Comercial San José")
+st.title("🛒 Comercial San José - Gestión de Inventario")
 
-# 1. CARGA DEL INVENTARIO
+# --- SECCIÓN 1: CONTROL DE STOCK ---
+st.header("📦 Control de Productos")
+
 try:
-    # Cargamos el archivo que tienes en GitHub
+    # Carga el inventario desde GitHub
     df = pd.read_csv("inventario_mercado.csv")
-    st.subheader("📦 Stock y Precios")
     
-    # Buscador rápido para atención al cliente
-    busqueda = st.text_input("🔍 Buscar producto:")
+    # Buscador de productos
+    busqueda = st.text_input("🔍 Buscar producto por nombre (Olla, Plato, etc.):")
     if busqueda:
-        df = df[df['producto'].str.contains(busqueda, case=False)]
+        df_mostrar = df[df['producto'].str.contains(busqueda, case=False)]
+    else:
+        df_mostrar = df
+
+    # Mostramos la tabla (ajustada para iPhone)
+    st.dataframe(df_mostrar, use_container_width=True)
     
-    st.dataframe(df, use_container_width=True)
 except Exception as e:
-    st.error("Error al cargar inventario_mercado.csv. Revisa que el archivo esté en la carpeta principal de GitHub.")
+    st.error("No se pudo cargar el inventario. Revisa que el archivo 'inventario_mercado.csv' esté en GitHub.")
 
-# 2. CATÁLOGO VISUAL (Rutas corregidas)
-st.subheader("📸 Galería de Productos")
+# --- SECCIÓN 2: GALERÍA DE PRODUCTOS ---
+st.header("📸 Galería de Productos")
 
-# Diccionario con los nombres EXACTOS que tienes ahora en GitHub
-# Se usa 'termo.jfif' en minúsculas como lo acabas de renombrar
+# Nombres exactos de tu carpeta 'fotostu_imagen.jpg'
 catalogo = {
     "Olla de Aluminio": "OLLA.jfif",
     "Platos Diversos": "PLATOS.jfif",
     "Cacerola Alta": "CACEROLA-ALTA-ALUMINIO.jpg",
-    "Juego de Cubiertos": "CUBIERTOS.jfif",
+    "Sets de Cubiertos": "CUBIERTOS.jfif",
     "Termo": "termo.jfif",
     "Producto Nuevo": "0_0550265095_0.webp"
 }
 
 ruta_carpeta = "fotostu_imagen.jpg"
-columnas = st.columns(2) # 2 columnas se ve mejor en iPhone
+
+# Usamos 2 columnas para que en el celular no se vea muy pequeño
+cols = st.columns(2)
 
 for i, (nombre, archivo) in enumerate(catalogo.items()):
-    with columnas[i % 2]:
+    with cols[i % 2]:
         ruta_completa = os.path.join(ruta_carpeta, archivo)
         if os.path.exists(ruta_completa):
             st.image(ruta_completa, caption=nombre, use_container_width=True)
         else:
-            st.warning(f"No detectado: {archivo}")
+            st.info(f"Imagen pendiente: {nombre}")
 
+# --- SECCIÓN 3: NOTAS ---
 st.divider()
-st.caption("Sistema de Gestión - Juliaca 2026")
+st.info("💡 Para actualizar el stock o precios por x.mayor, recuerda modificar el archivo Excel y subirlo a GitHub.")
+st.caption("Sistema Comercial San José - Plaza San José, Juliaca")
