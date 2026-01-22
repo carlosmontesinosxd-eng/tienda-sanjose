@@ -2,62 +2,51 @@ import streamlit as st
 import pandas as pd
 import os
 
-# Configuración para que se vea perfecto en tu iPhone
-st.set_page_config(page_title="Comercial San José", layout="wide", page_icon="🍳")
+# Configuración de página
+st.set_page_config(page_title="Comercial San José", layout="wide")
 
-st.title("🍳 Sistema Comercial San José - Inventario")
+st.title("🍳 Sistema Comercial San José")
 
-# --- 1. CARGA DE DATOS CON CORRECCIÓN DE ERRORES ---
+# 1. CARGA DE DATOS (Con limpieza de nombres para evitar errores)
 try:
     df = pd.read_csv("inventario_mercado.csv")
-    
-    # Esta línea evita el KeyError: limpia los títulos del Excel automáticamente
     df.columns = [c.strip().lower() for c in df.columns]
-    
-    # Buscamos la columna principal para el buscador y las ventas
-    if 'producto' in df.columns:
-        col_prod = 'producto'
-    else:
-        col_prod = df.columns[0] # Si no la encuentra, usa la primera por defecto
-except Exception as e:
-    st.error(f"No se pudo cargar el archivo: {e}")
+    col_prod = 'producto' if 'producto' in df.columns else df.columns[0]
+except:
+    st.error("No se encontró el archivo de inventario.")
     st.stop()
 
-# --- 2. REGISTRO DE VENTAS (Interfaz Recuperada) ---
+# 2. INTERFAZ DE VENTAS (Lo que recuperamos)
 st.header("🛒 Registrar Venta")
-with st.expander("Abrir Formulario"):
+with st.expander("Abrir Formulario de Registro"):
     c1, c2, c3 = st.columns(3)
     with c1:
-        prod_sel = st.selectbox("Producto:", df[col_prod].unique())
+        prod_sel = st.selectbox("Selecciona Producto:", df[col_prod].unique())
     with c2:
         cant = st.number_input("Cantidad:", min_value=1, value=1)
     with c3:
-        # Usamos x.mayor como me indicaste para tus precios especiales
-        precio_tipo = st.radio("Precio:", ["Normal", "x.mayor"]) 
+        precio_tipo = st.radio("Tipo de Precio:", ["Normal", "x.mayor"]) # Mantenemos tu término x.mayor
 
-    if st.button("Registrar Venta"):
-        st.success(f"Venta de {cant} {prod_sel} registrada con éxito.")
+    if st.button("Confirmar Venta"):
+        st.success(f"Venta registrada: {cant} {prod_sel} a precio {precio_tipo}")
 
 st.divider()
 
-# --- 3. BUSCADOR Y TABLA DE STOCK ---
-st.header("📦 Stock en Plaza San José")
-buscar = st.text_input("🔍 Buscar producto por nombre:")
-if buscar:
-    df_vis = df[df[col_prod].str.contains(buscar, case=False)]
-else:
-    df_vis = df
+# 3. BUSCADOR Y TABLA
+st.header("📦 Stock Disponible")
+buscar = st.text_input("🔍 Buscar producto:")
+df_vis = df[df[col_prod].str.contains(buscar, case=False)] if buscar else df
 st.dataframe(df_vis, use_container_width=True)
 
-# --- 4. GALERÍA DE FOTOS (Con el nombre termo.jfif corregido) ---
-st.header("📸 Catálogo de Productos")
+# 4. GALERÍA DE FOTOS (Nombres exactos de tu carpeta)
+st.header("📸 Catálogo Visual")
 fotos = {
-    "Olla de Aluminio": "OLLA.jfif",
-    "Platos Diversos": "PLATOS.jfif",
-    "Cacerola Alta": "CACEROLA-ALTA-ALUMINIO.jpg",
-    "Sets de Cubiertos": "CUBIERTOS.jfif",
+    "Olla": "OLLA.jfif",
+    "Platos": "PLATOS.jfif",
+    "Cacerola": "CACEROLA-ALTA-ALUMINIO.jpg",
+    "Cubiertos": "CUBIERTOS.jfif",
     "Termo": "termo.jfif",
-    "Producto Nuevo": "0_0550265095_0.webp"
+    "Nuevo": "0_0550265095_0.webp"
 }
 
 ruta_fotos = "fotostu_imagen.jpg"
@@ -68,4 +57,4 @@ for i, (nombre, archivo) in enumerate(fotos.items()):
         if os.path.exists(camino):
             st.image(camino, caption=nombre, use_container_width=True)
 
-st.caption("Gestión Comercial San José - Juliaca 2026")
+st.caption("Sistema de gestión para la Plaza San José, Juliaca.")
